@@ -1,8 +1,8 @@
 import { useState, useContext, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingBag, Menu, X, Search, Heart, User, ChevronDown } from 'lucide-react';
-import { CartContext, WishlistContext } from '../App';
+import { ShoppingBag, Menu, X, Search, Heart, User, ChevronDown, LogOut } from 'lucide-react';
+import { CartContext, WishlistContext, AuthContext } from '../App';
 import CartSidebar from './CartSidebar';
 import './Navbar.css';
 
@@ -11,9 +11,12 @@ const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const { cartCount, isCartOpen, setIsCartOpen } = useContext(CartContext);
   const { wishlistCount } = useContext(WishlistContext);
+  const { user, logout } = useContext(AuthContext);
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -27,6 +30,7 @@ const Navbar = () => {
     setIsMenuOpen(false);
     setActiveDropdown(null);
     setIsSearchOpen(false);
+    setShowUserMenu(false);
   }, [location]);
 
   const productTypes = [
@@ -130,9 +134,51 @@ const Navbar = () => {
                 <span className="badge wishlist-badge">{wishlistCount}</span>
               )}
             </Link>
-            <Link to="/login" className="nav-icon-btn">
-              <User size={20} />
-            </Link>
+            
+            {/* User Account Section */}
+            <div 
+              className="user-menu-container"
+              onMouseEnter={() => setShowUserMenu(true)}
+              onMouseLeave={() => setShowUserMenu(false)}
+            >
+              {user ? (
+                <>
+                  <button className="nav-icon-btn user-btn">
+                    <User size={20} />
+                    <span className="user-name">{user.full_name?.split(' ')[0] || 'Account'}</span>
+                  </button>
+                  {showUserMenu && (
+                    <motion.div
+                      className="user-dropdown"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                    >
+                      <div className="user-info">
+                        <span className="user-greeting">Hello, {user.full_name}</span>
+                        <span className="user-email">{user.email}</span>
+                      </div>
+                      {user.is_admin && (
+                        <Link to="/admin/dashboard" className="dropdown-link">
+                          Admin Dashboard
+                        </Link>
+                      )}
+                      <button 
+                        className="dropdown-link logout-btn"
+                        onClick={() => { logout(); navigate('/'); }}
+                      >
+                        <LogOut size={16} />
+                        Logout
+                      </button>
+                    </motion.div>
+                  )}
+                </>
+              ) : (
+                <Link to="/login" className="nav-icon-btn">
+                  <User size={20} />
+                </Link>
+              )}
+            </div>
+            
             <button
               className="nav-icon-btn cart-btn"
               onClick={() => setIsCartOpen(true)}

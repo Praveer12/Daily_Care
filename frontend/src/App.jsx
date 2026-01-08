@@ -29,6 +29,7 @@ function ScrollToTop() {
 export const CartContext = createContext();
 export const WishlistContext = createContext();
 export const AdminContext = createContext();
+export const AuthContext = createContext();
 
 function App() {
   const [cartItems, setCartItems] = useState([]);
@@ -42,6 +43,30 @@ function App() {
     totalOrders: 1247,
     siteVisitors: 12458,
   });
+  
+  // User authentication state
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem('user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+  const [token, setToken] = useState(() => localStorage.getItem('token'));
+
+  // Auth functions
+  const login = (userData, accessToken) => {
+    setUser(userData);
+    setToken(accessToken);
+    localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('token', accessToken);
+  };
+
+  const logout = () => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    localStorage.removeItem('adminAuth');
+    setIsAdminAuth(false);
+  };
 
   // Increment visitor count on mount
   useEffect(() => {
@@ -149,66 +174,68 @@ function App() {
   };
 
   return (
-    <CartContext.Provider value={{
-      cartItems, addToCart, removeFromCart, updateQuantity,
-      cartTotal, cartCount, isCartOpen, setIsCartOpen
-    }}>
-      <WishlistContext.Provider value={{
-        wishlistItems, addToWishlist, removeFromWishlist, isInWishlist, wishlistCount
+    <AuthContext.Provider value={{ user, token, login, logout }}>
+      <CartContext.Provider value={{
+        cartItems, addToCart, removeFromCart, updateQuantity,
+        cartTotal, cartCount, isCartOpen, setIsCartOpen
       }}>
-        <AdminContext.Provider value={{
-          products, addProduct, updateProduct, deleteProduct,
-          stats, notifications, clearNotification
+        <WishlistContext.Provider value={{
+          wishlistItems, addToWishlist, removeFromWishlist, isInWishlist, wishlistCount
         }}>
-          <Router>
-            <ScrollToTop />
-            <Routes>
-              {/* Admin Routes - No Navbar/Footer */}
-              <Route
-                path="/admin"
-                element={
-                  isAdminAuth ?
-                    <Navigate to="/admin/dashboard" replace /> :
-                    <AdminLogin onLogin={() => setIsAdminAuth(true)} />
-                }
-              />
-              <Route
-                path="/admin/dashboard"
-                element={
-                  <ProtectedAdminRoute>
-                    <AdminDashboard onLogout={() => setIsAdminAuth(false)} />
-                  </ProtectedAdminRoute>
-                }
-              />
+          <AdminContext.Provider value={{
+            products, addProduct, updateProduct, deleteProduct,
+            stats, notifications, clearNotification
+          }}>
+            <Router>
+              <ScrollToTop />
+              <Routes>
+                {/* Admin Routes - No Navbar/Footer */}
+                <Route
+                  path="/admin"
+                  element={
+                    isAdminAuth ?
+                      <Navigate to="/admin/dashboard" replace /> :
+                      <AdminLogin onLogin={() => setIsAdminAuth(true)} />
+                  }
+                />
+                <Route
+                  path="/admin/dashboard"
+                  element={
+                    <ProtectedAdminRoute>
+                      <AdminDashboard onLogout={() => { setIsAdminAuth(false); logout(); }} />
+                    </ProtectedAdminRoute>
+                  }
+                />
 
-              {/* Public Routes - With Navbar/Footer */}
-              <Route
-                path="/*"
-                element={
-                  <div className="app">
-                    <Navbar />
-                    <main>
-                      <Routes>
-                        <Route path="/" element={<Home />} />
-                        <Route path="/products" element={<Products />} />
-                        <Route path="/products/:category" element={<Products />} />
-                        <Route path="/product/:id" element={<ProductDetail />} />
-                        <Route path="/cart" element={<Cart />} />
-                        <Route path="/about" element={<About />} />
-                        <Route path="/contact" element={<Contact />} />
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/wishlist" element={<Wishlist />} />
-                      </Routes>
-                    </main>
-                    <Footer />
-                  </div>
-                }
-              />
-            </Routes>
-          </Router>
-        </AdminContext.Provider>
-      </WishlistContext.Provider>
-    </CartContext.Provider>
+                {/* Public Routes - With Navbar/Footer */}
+                <Route
+                  path="/*"
+                  element={
+                    <div className="app">
+                      <Navbar />
+                      <main>
+                        <Routes>
+                          <Route path="/" element={<Home />} />
+                          <Route path="/products" element={<Products />} />
+                          <Route path="/products/:category" element={<Products />} />
+                          <Route path="/product/:id" element={<ProductDetail />} />
+                          <Route path="/cart" element={<Cart />} />
+                          <Route path="/about" element={<About />} />
+                          <Route path="/contact" element={<Contact />} />
+                          <Route path="/login" element={<Login />} />
+                          <Route path="/wishlist" element={<Wishlist />} />
+                        </Routes>
+                      </main>
+                      <Footer />
+                    </div>
+                  }
+                />
+              </Routes>
+            </Router>
+          </AdminContext.Provider>
+        </WishlistContext.Provider>
+      </CartContext.Provider>
+    </AuthContext.Provider>
   );
 }
 

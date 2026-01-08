@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, User, Phone } from 'lucide-react';
 import { API_URL } from '../data/products';
+import { AuthContext } from '../App';
 import './Login.css';
 
 const Login = () => {
@@ -17,6 +18,7 @@ const Login = () => {
     phone: ''
   });
   const navigate = useNavigate();
+  const { login } = useContext(AuthContext);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -38,14 +40,13 @@ const Login = () => {
 
         if (res.ok) {
           const data = await res.json();
-          localStorage.setItem('token', data.access_token);
           // Fetch user info
           const userRes = await fetch(`${API_URL}/api/auth/me`, {
             headers: { 'Authorization': `Bearer ${data.access_token}` }
           });
           if (userRes.ok) {
             const user = await userRes.json();
-            localStorage.setItem('user', JSON.stringify(user));
+            login(user, data.access_token);
           }
           navigate('/');
         } else {
