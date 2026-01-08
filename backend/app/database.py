@@ -3,18 +3,11 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from .config import settings
 
-# Handle different PostgreSQL URL formats
 database_url = settings.database_url
 
+# Handle Heroku/Railway style postgres:// URLs
 if database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
-elif database_url.startswith("cockroachdb://"):
-    # Use CockroachDB dialect
-    database_url = database_url.replace("cockroachdb://", "cockroachdb+psycopg2://", 1)
-
-# Fix SSL mode for CockroachDB on Render (use system certs)
-if "sslmode=verify-full" in database_url:
-    database_url = database_url.replace("sslmode=verify-full", "sslmode=require")
 
 engine = create_engine(database_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
