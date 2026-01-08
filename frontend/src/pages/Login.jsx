@@ -1,21 +1,84 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, User, Phone } from 'lucide-react';
+import { API_URL } from '../data/products';
 import './Login.css';
 
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    password: ''
+    password: '',
+    phone: ''
   });
+  const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    alert(isLogin ? 'Login successful! Welcome back.' : 'Account created successfully!');
+    setLoading(true);
+    setError('');
+
+    try {
+      if (isLogin) {
+        // Login - uses form-urlencoded format
+        const formBody = new URLSearchParams();
+        formBody.append('username', formData.email);
+        formBody.append('password', formData.password);
+
+        const res = await fetch(`${API_URL}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: formBody
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          localStorage.setItem('token', data.access_token);
+          // Fetch user info
+          const userRes = await fetch(`${API_URL}/api/auth/me`, {
+            headers: { 'Authorization': `Bearer ${data.access_token}` }
+          });
+          if (userRes.ok) {
+            const user = await userRes.json();
+            localStorage.setItem('user', JSON.stringify(user));
+          }
+          navigate('/');
+        } else {
+          const err = await res.json();
+          setError(err.detail || 'Login failed');
+        }
+      } else {
+        // Register
+        const res = await fetch(`${API_URL}/api/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: formData.email,
+            password: formData.password,
+            full_name: formData.name,
+            phone: formData.phone || null
+          })
+        });
+
+        if (res.ok) {
+          setIsLogin(true);
+          setError('');
+          alert('Account created! Please sign in.');
+        } else {
+          const err = await res.json();
+          setError(err.detail || 'Registration failed');
+        }
+      }
+    } catch (err) {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChange = (e) => {
@@ -111,6 +174,25 @@ const Login = () => {
               </div>
             </div>
 
+            {!isLogin && (
+              <div className="form-group">
+                <label htmlFor="phone">Phone (Optional)</label>
+                <div className="input-wrapper">
+                  <Phone size={18} />
+                  <input
+                    type="tel"
+                    id="phone"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    placeholder="Enter your phone"
+                  />
+                </div>
+              </div>
+            )}
+
+            {error && <div className="error-message" style={{color: 'red', marginBottom: '1rem'}}>{error}</div>}
+
             {isLogin && (
               <div className="form-options">
                 <label className="remember-me">
@@ -121,8 +203,8 @@ const Login = () => {
               </div>
             )}
 
-            <button type="submit" className="login-btn">
-              {isLogin ? 'Sign In' : 'Create Account'}
+            <button type="submit" className="login-btn" disabled={loading}>
+              {loading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Create Account')}
             </button>
 
             <div className="divider">

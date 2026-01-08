@@ -2,25 +2,61 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Lock, Mail, Shield } from 'lucide-react';
+import { API_URL } from '../../data/products';
 import './AdminLogin.css';
 
 const AdminLogin = ({ onLogin }) => {
   const [credentials, setCredentials] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Demo credentials - in production, use proper authentication
-  const ADMIN_EMAIL = 'admin@pureglow.in';
-  const ADMIN_PASSWORD = 'admin123';
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (credentials.email === ADMIN_EMAIL && credentials.password === ADMIN_PASSWORD) {
-      localStorage.setItem('adminAuth', 'true');
-      onLogin();
-      navigate('/admin/dashboard');
-    } else {
-      setError('Invalid credentials. Try admin@pureglow.in / admin123');
+    setLoading(true);
+    setError('');
+
+    try {
+      // Login via API
+      const formBody = new URLSearchParams();
+      formBody.append('username', credentials.email);
+      formBody.append('password', credentials.password);
+
+      const res = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formBody
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        localStorage.setItem('token', data.access_token);
+        
+        // Check if user is admin
+        const userRes = await fetch(`${API_URL}/api/auth/me`, {
+          headers: { 'Authorization': `Bearer ${data.access_token}` }
+        });
+        
+        if (userRes.ok) {
+          const user = await userRes.json();
+          if (user.is_admin) {
+            localStorage.setItem('adminAuth', 'true');
+            localStorage.setItem('user', JSON.stringify(user));
+            onLogin();
+            navigate('/admin/dashboard');
+          } else {
+            setError('Access denied. Admin privileges required.');
+            localStorage.removeItem('token');
+          }
+        }
+      } else {
+        const err = await res.json();
+        setError(err.detail || 'Invalid credentials');
+      }
+    } catch (err) {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -70,13 +106,13 @@ const AdminLogin = ({ onLogin }) => {
             </div>
           </div>
 
-          <button type="submit" className="admin-login-btn">
-            Sign In to Dashboard
+          <button type="submit" className="admin-login-btn" disabled={loading}>
+            {loading ? 'Signing in...' : 'Sign In to Dashboard'}
           </button>
         </form>
 
         <p className="demo-hint">
-          Demo: admin@pureglow.in / admin123
+          Use your admin account credentials
         </p>
       </motion.div>
     </div>
