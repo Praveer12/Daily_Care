@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
   LayoutDashboard, Package, ShoppingCart, Users, TrendingUp,
   Bell, LogOut, Plus, Eye, Star, IndianRupee, BarChart3,
-  ArrowUpRight, ArrowDownRight, Clock, ArrowLeft, Upload, X
+  ArrowUpRight, Clock, ArrowLeft, Upload, X
 } from 'lucide-react';
 import { AdminContext } from '../../App';
 import { API_URL } from '../../data/products';
@@ -12,11 +12,24 @@ import './AdminDashboard.css';
 
 const AdminDashboard = ({ onLogout }) => {
   const navigate = useNavigate();
-  const { stats, notifications, products, clearNotification } = useContext(AdminContext);
+  const { notifications, clearNotification } = useContext(AdminContext);
   const [activeTab, setActiveTab] = useState('overview');
   const [categories, setCategories] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formMessage, setFormMessage] = useState({ type: '', text: '' });
+  
+  // Live data states
+  const [stats, setStats] = useState({
+    total_users: 0,
+    total_products: 0,
+    total_orders: 0,
+    total_revenue: 0,
+    pending_orders: 0
+  });
+  const [products, setProducts] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
   
   const [productForm, setProductForm] = useState({
     name: '',
@@ -35,10 +48,38 @@ const AdminDashboard = ({ onLogout }) => {
     benefits: ''
   });
 
-  // Fetch categories on mount
+  const token = localStorage.getItem('token');
+
+  // Fetch all data on mount
   useEffect(() => {
-    fetchCategories();
+    fetchDashboardData();
   }, []);
+
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    await Promise.all([
+      fetchStats(),
+      fetchCategories(),
+      fetchProducts(),
+      fetchOrders(),
+      fetchUsers()
+    ]);
+    setLoading(false);
+  };
+
+  const fetchStats = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/stats`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setStats(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+    }
+  };
 
   const fetchCategories = async () => {
     try {
@@ -49,6 +90,46 @@ const AdminDashboard = ({ onLogout }) => {
       }
     } catch (error) {
       console.error('Failed to fetch categories:', error);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/products`);
+      if (res.ok) {
+        const data = await res.json();
+        setProducts(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch products:', error);
+    }
+  };
+
+  const fetchOrders = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/orders`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setOrders(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch orders:', error);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/users`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUsers(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
     }
   };
 
@@ -95,7 +176,6 @@ const AdminDashboard = ({ onLogout }) => {
     setIsSubmitting(true);
     setFormMessage({ type: '', text: '' });
 
-    const token = localStorage.getItem('adminToken');
     if (!token) {
       setFormMessage({ type: 'error', text: 'Not authenticated. Please login again.' });
       setIsSubmitting(false);
@@ -136,6 +216,8 @@ const AdminDashboard = ({ onLogout }) => {
           image: '', images: [], category_id: '', product_type: '',
           stock: '', is_new: false, is_bestseller: false, ingredients: '', benefits: ''
         });
+        // Refresh data
+        await fetchDashboardData();
         setTimeout(() => setActiveTab('products'), 1500);
       } else {
         const error = await res.json();
@@ -155,16 +237,8 @@ const AdminDashboard = ({ onLogout }) => {
   };
 
   const topProducts = [...products]
-    .sort((a, b) => b.reviews - a.reviews)
+    .sort((a, b) => (b.reviews_count || 0) - (a.reviews_count || 0))
     .slice(0, 5);
-
-  const recentOrders = [
-    { id: 'ORD001', customer: 'Priya Sharma', amount: 2499, status: 'delivered', date: '2 hours ago' },
-    { id: 'ORD002', customer: 'Rahul Verma', amount: 1899, status: 'processing', date: '4 hours ago' },
-    { id: 'ORD003', customer: 'Ananya Gupta', amount: 3299, status: 'shipped', date: '6 hours ago' },
-    { id: 'ORD004', customer: 'Vikram Singh', amount: 999, status: 'pending', date: '8 hours ago' },
-    { id: 'ORD005', customer: 'Neha Patel', amount: 1599, status: 'delivered', date: '12 hours ago' },
-  ];
 
   return (
     <div className="admin-layout">
@@ -253,9 +327,9 @@ const AdminDashboard = ({ onLogout }) => {
                 </div>
                 <div className="stat-info">
                   <span className="stat-label">Total Revenue</span>
-                  <span className="stat-value">₹{stats.totalRevenue.toLocaleString()}</span>
+                  <span className="stat-value">₹{stats.total_revenue?.toLocaleString() || 0}</span>
                   <span className="stat-change positive">
-                    <ArrowUpRight size={14} /> +12.5%
+                    <ArrowUpRight size={14} /> Live
                   </span>
                 </div>
               </motion.div>
@@ -271,9 +345,9 @@ const AdminDashboard = ({ onLogout }) => {
                 </div>
                 <div className="stat-info">
                   <span className="stat-label">Total Orders</span>
-                  <span className="stat-value">{stats.totalOrders}</span>
+                  <span className="stat-value">{stats.total_orders || 0}</span>
                   <span className="stat-change positive">
-                    <ArrowUpRight size={14} /> +8.2%
+                    <ArrowUpRight size={14} /> {stats.pending_orders || 0} pending
                   </span>
                 </div>
               </motion.div>
@@ -288,10 +362,10 @@ const AdminDashboard = ({ onLogout }) => {
                   <Users size={24} />
                 </div>
                 <div className="stat-info">
-                  <span className="stat-label">Site Visitors</span>
-                  <span className="stat-value">{stats.siteVisitors.toLocaleString()}</span>
+                  <span className="stat-label">Total Users</span>
+                  <span className="stat-value">{stats.total_users?.toLocaleString() || 0}</span>
                   <span className="stat-change positive">
-                    <ArrowUpRight size={14} /> +23.1%
+                    <ArrowUpRight size={14} /> Live
                   </span>
                 </div>
               </motion.div>
@@ -324,23 +398,27 @@ const AdminDashboard = ({ onLogout }) => {
                   <TrendingUp size={20} />
                 </div>
                 <div className="top-products-list">
-                  {topProducts.map((product, index) => (
-                    <div key={product.id} className="top-product-item">
-                      <span className="rank">#{index + 1}</span>
-                      <img src={product.image} alt={product.name} />
-                      <div className="product-info">
-                        <span className="name">{product.name}</span>
-                        <span className="category">{product.category}</span>
+                  {products.length === 0 ? (
+                    <p style={{textAlign: 'center', padding: '1rem', color: '#888'}}>No products yet</p>
+                  ) : (
+                    topProducts.map((product, index) => (
+                      <div key={product.id} className="top-product-item">
+                        <span className="rank">#{index + 1}</span>
+                        <img src={product.image} alt={product.name} />
+                        <div className="product-info">
+                          <span className="name">{product.name}</span>
+                          <span className="category">{product.category?.name || product.product_type}</span>
+                        </div>
+                        <div className="product-stats">
+                          <span className="price">₹{product.price}</span>
+                          <span className="rating">
+                            <Star size={12} fill="#f4c430" color="#f4c430" />
+                            {product.rating || 0}
+                          </span>
+                        </div>
                       </div>
-                      <div className="product-stats">
-                        <span className="price">₹{product.price}</span>
-                        <span className="rating">
-                          <Star size={12} fill="#f4c430" color="#f4c430" />
-                          {product.rating}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -351,19 +429,23 @@ const AdminDashboard = ({ onLogout }) => {
                   <Clock size={20} />
                 </div>
                 <div className="orders-list">
-                  {recentOrders.map((order) => (
-                    <div key={order.id} className="order-item">
-                      <div className="order-info">
-                        <span className="order-id">{order.id}</span>
-                        <span className="customer">{order.customer}</span>
+                  {orders.length === 0 ? (
+                    <p style={{textAlign: 'center', padding: '1rem', color: '#888'}}>No orders yet</p>
+                  ) : (
+                    orders.slice(0, 5).map((order) => (
+                      <div key={order.id} className="order-item">
+                        <div className="order-info">
+                          <span className="order-id">#{order.id}</span>
+                          <span className="customer">{order.user?.full_name || 'Guest'}</span>
+                        </div>
+                        <span className="order-amount">₹{order.total_amount}</span>
+                        <span className={`order-status ${order.status}`}>
+                          {order.status}
+                        </span>
+                        <span className="order-date">{new Date(order.created_at).toLocaleDateString()}</span>
                       </div>
-                      <span className="order-amount">₹{order.amount}</span>
-                      <span className={`order-status ${order.status}`}>
-                        {order.status}
-                      </span>
-                      <span className="order-date">{order.date}</span>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -374,7 +456,7 @@ const AdminDashboard = ({ onLogout }) => {
         {activeTab === 'products' && (
           <div className="products-content">
             <div className="content-header">
-              <h2>Manage Products</h2>
+              <h2>Manage Products ({products.length})</h2>
               <button className="add-product-btn" onClick={() => setActiveTab('add-product')}>
                 <Plus size={18} />
                 Add New Product
@@ -388,35 +470,36 @@ const AdminDashboard = ({ onLogout }) => {
                     <th>Category</th>
                     <th>Type</th>
                     <th>Price</th>
-                    <th>Rating</th>
+                    <th>Stock</th>
                     <th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {products.map((product) => (
-                    <tr key={product.id}>
-                      <td>
-                        <div className="product-cell">
-                          <img src={product.image} alt={product.name} />
-                          <span>{product.name}</span>
-                        </div>
-                      </td>
-                      <td><span className="category-badge">{product.category}</span></td>
-                      <td>{product.type}</td>
-                      <td>₹{product.price}</td>
-                      <td>
-                        <span className="rating-cell">
-                          <Star size={14} fill="#f4c430" color="#f4c430" />
-                          {product.rating}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`status-badge ${product.isNew ? 'new' : 'active'}`}>
-                          {product.isNew ? 'New' : 'Active'}
-                        </span>
-                      </td>
+                  {products.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" style={{textAlign: 'center', padding: '2rem'}}>No products yet. Add your first product!</td>
                     </tr>
-                  ))}
+                  ) : (
+                    products.map((product) => (
+                      <tr key={product.id}>
+                        <td>
+                          <div className="product-cell">
+                            <img src={product.image} alt={product.name} />
+                            <span>{product.name}</span>
+                          </div>
+                        </td>
+                        <td><span className="category-badge">{product.category?.name || '-'}</span></td>
+                        <td>{product.product_type || '-'}</td>
+                        <td>₹{product.price}</td>
+                        <td>{product.stock}</td>
+                        <td>
+                          <span className={`status-badge ${product.is_new ? 'new' : 'active'}`}>
+                            {product.is_new ? 'New' : 'Active'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -564,19 +647,25 @@ const AdminDashboard = ({ onLogout }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {recentOrders.map((order) => (
-                    <tr key={order.id}>
-                      <td>{order.id}</td>
-                      <td>{order.customer}</td>
-                      <td>₹{order.amount}</td>
-                      <td>
-                        <span className={`status-badge ${order.status}`}>
-                          {order.status}
-                        </span>
-                      </td>
-                      <td>{order.date}</td>
+                  {orders.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" style={{textAlign: 'center', padding: '2rem'}}>No orders yet</td>
                     </tr>
-                  ))}
+                  ) : (
+                    orders.map((order) => (
+                      <tr key={order.id}>
+                        <td>#{order.id}</td>
+                        <td>{order.user?.full_name || order.user?.email || 'Guest'}</td>
+                        <td>₹{order.total_amount}</td>
+                        <td>
+                          <span className={`status-badge ${order.status}`}>
+                            {order.status}
+                          </span>
+                        </td>
+                        <td>{new Date(order.created_at).toLocaleDateString()}</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
