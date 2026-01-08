@@ -10,6 +10,7 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import Login from './pages/Login';
 import Wishlist from './pages/Wishlist';
+import Account from './pages/Account';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import { products as initialProducts } from './data/products';
@@ -224,6 +225,7 @@ function App() {
                           <Route path="/contact" element={<Contact />} />
                           <Route path="/login" element={<Login />} />
                           <Route path="/wishlist" element={<Wishlist />} />
+                          <Route path="/account" element={<Account />} />
                         </Routes>
                       </main>
                       <Footer />

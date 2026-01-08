@@ -143,10 +143,10 @@ const Navbar = () => {
             >
               {user ? (
                 <>
-                  <button className="nav-icon-btn user-btn">
+                  <Link to="/account" className="nav-icon-btn user-btn">
                     <User size={20} />
                     <span className="user-name">{user.full_name?.split(' ')[0] || 'Account'}</span>
-                  </button>
+                  </Link>
                   {showUserMenu && (
                     <motion.div
                       className="user-dropdown"
@@ -157,6 +157,9 @@ const Navbar = () => {
                         <span className="user-greeting">Hello, {user.full_name}</span>
                         <span className="user-email">{user.email}</span>
                       </div>
+                      <Link to="/account" className="dropdown-link">
+                        My Account
+                      </Link>
                       {user.is_admin && (
                         <Link to="/admin/dashboard" className="dropdown-link">
                           Admin Dashboard
