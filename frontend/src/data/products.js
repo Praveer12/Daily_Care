@@ -1,5 +1,5 @@
-// API URL - change this for production
-export const API_URL = 'http://localhost:8000';
+// API URL - uses environment variable in production, localhost in development
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Static products array - will be empty, data comes from API
 export const products = [];

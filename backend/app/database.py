@@ -3,10 +3,12 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from .config import settings
 
-# Handle Railway PostgreSQL URL (they use 'postgres://' but SQLAlchemy needs 'postgresql://')
+# Handle different PostgreSQL URL formats
 database_url = settings.database_url
 if database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
+elif database_url.startswith("cockroachdb://"):
+    database_url = database_url.replace("cockroachdb://", "postgresql+psycopg2://", 1)
 
 engine = create_engine(database_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

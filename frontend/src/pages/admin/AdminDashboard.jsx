@@ -7,9 +7,8 @@ import {
   ArrowUpRight, ArrowDownRight, Clock, ArrowLeft, Upload, X
 } from 'lucide-react';
 import { AdminContext } from '../../App';
+import { API_URL } from '../../data/products';
 import './AdminDashboard.css';
-
-const API_URL = 'http://localhost:8000';
 
 const AdminDashboard = ({ onLogout }) => {
   const navigate = useNavigate();
