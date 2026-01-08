@@ -10,6 +10,10 @@ if database_url.startswith("postgres://"):
 elif database_url.startswith("cockroachdb://"):
     database_url = database_url.replace("cockroachdb://", "postgresql+psycopg2://", 1)
 
+# Fix SSL mode for CockroachDB on Render (use system certs)
+if "sslmode=verify-full" in database_url:
+    database_url = database_url.replace("sslmode=verify-full", "sslmode=require")
+
 engine = create_engine(database_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
