@@ -22,14 +22,19 @@ const AdminLogin = ({ onLogin }) => {
       formBody.append('username', credentials.email);
       formBody.append('password', credentials.password);
 
+      console.log('Attempting login to:', `${API_URL}/api/auth/login`);
+      
       const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: formBody
       });
 
+      console.log('Login response status:', res.status);
+
       if (res.ok) {
         const data = await res.json();
+        console.log('Login successful, got token');
         localStorage.setItem('token', data.access_token);
         
         // Check if user is admin
@@ -37,8 +42,11 @@ const AdminLogin = ({ onLogin }) => {
           headers: { 'Authorization': `Bearer ${data.access_token}` }
         });
         
+        console.log('User info response status:', userRes.status);
+        
         if (userRes.ok) {
           const user = await userRes.json();
+          console.log('User info:', user);
           if (user.is_admin) {
             localStorage.setItem('adminAuth', 'true');
             localStorage.setItem('user', JSON.stringify(user));
@@ -48,12 +56,18 @@ const AdminLogin = ({ onLogin }) => {
             setError('Access denied. Admin privileges required.');
             localStorage.removeItem('token');
           }
+        } else {
+          const errData = await userRes.json();
+          console.log('User info error:', errData);
+          setError('Failed to get user info');
         }
       } else {
         const err = await res.json();
+        console.log('Login error:', err);
         setError(err.detail || 'Invalid credentials');
       }
     } catch (err) {
+      console.error('Network error:', err);
       setError('Network error. Please try again.');
     } finally {
       setLoading(false);
