@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta, datetime
+from pydantic import BaseModel
 import random
 from ..database import get_db
 from ..models import User, OTP
@@ -160,8 +161,6 @@ class PasswordResetVerify(BaseModel):
     phone: str
     otp: str
     new_password: str
-
-from pydantic import BaseModel
 
 @router.post("/forgot-password")
 def forgot_password(request: PasswordResetRequest, db: Session = Depends(get_db)):
