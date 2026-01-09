@@ -150,3 +150,80 @@ def verify_otp(otp_verify: OTPVerify, db: Session = Depends(get_db)):
     )
     
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+# Password Reset Endpoints
+class PasswordResetRequest(BaseModel):
+    phone: str
+
+class PasswordResetVerify(BaseModel):
+    phone: str
+    otp: str
+    new_password: str
+
+from pydantic import BaseModel
+
+@router.post("/forgot-password")
+def forgot_password(request: PasswordResetRequest, db: Session = Depends(get_db)):
+    """Send OTP for password reset"""
+    user = db.query(User).filter(User.phone == request.phone).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Phone number not registered")
+    
+    # Generate 6-digit OTP
+    otp_code = str(random.randint(100000, 999999))
+    
+    # Delete any existing OTPs for this phone
+    db.query(OTP).filter(OTP.phone == request.phone).delete()
+    
+    # Create new OTP (expires in 5 minutes)
+    new_otp = OTP(
+        phone=request.phone,
+        otp_code=otp_code,
+        expires_at=datetime.utcnow() + timedelta(minutes=5)
+    )
+    db.add(new_otp)
+    db.commit()
+    
+    # Send SMS via Twilio
+    sms_sent = send_sms_otp(request.phone, otp_code)
+    
+    response = {
+        "message": "OTP sent for password reset" if sms_sent else "OTP generated (SMS not configured)",
+        "phone": request.phone,
+    }
+    
+    if not sms_sent:
+        response["otp_debug"] = otp_code
+    
+    return response
+
+@router.post("/reset-password")
+def reset_password(request: PasswordResetVerify, db: Session = Depends(get_db)):
+    """Verify OTP and reset password"""
+    # Find the OTP
+    otp_record = db.query(OTP).filter(
+        OTP.phone == request.phone,
+        OTP.otp_code == request.otp,
+        OTP.is_used == False
+    ).first()
+    
+    if not otp_record:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+    
+    # Check if OTP is expired
+    if datetime.utcnow() > otp_record.expires_at:
+        raise HTTPException(status_code=400, detail="OTP has expired")
+    
+    # Mark OTP as used
+    otp_record.is_used = True
+    
+    # Find user and update password
+    user = db.query(User).filter(User.phone == request.phone).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user.hashed_password = get_password_hash(request.new_password)
+    db.commit()
+    
+    return {"message": "Password reset successfully"}
