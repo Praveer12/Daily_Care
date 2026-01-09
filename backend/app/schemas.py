@@ -6,10 +6,15 @@ from datetime import datetime
 class UserBase(BaseModel):
     email: EmailStr
     full_name: str
-    phone: Optional[str] = None
+    phone: str  # Required field
 
 class UserCreate(UserBase):
     password: str
+
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -19,6 +24,7 @@ class User(UserBase):
     id: int
     is_active: bool
     is_admin: bool
+    address: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -27,6 +33,14 @@ class User(UserBase):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+# OTP Schemas
+class OTPRequest(BaseModel):
+    phone: str
+
+class OTPVerify(BaseModel):
+    phone: str
+    otp: str
 
 # Category Schemas
 class CategoryBase(BaseModel):

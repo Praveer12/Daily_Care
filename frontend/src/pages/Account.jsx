@@ -3,18 +3,26 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   User, Package, Clock, CheckCircle, Truck, XCircle, 
-  Mail, Phone, MapPin, Edit2, LogOut, ChevronRight
+  Mail, Phone, MapPin, Edit2, LogOut, ChevronRight, Save, X
 } from 'lucide-react';
 import { AuthContext } from '../App';
 import { API_URL } from '../data/products';
 import './Account.css';
 
 const Account = () => {
-  const { user, token, logout } = useContext(AuthContext);
+  const { user, token, logout, login } = useContext(AuthContext);
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('orders');
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState({ type: '', text: '' });
+  const [profileForm, setProfileForm] = useState({
+    full_name: '',
+    phone: '',
+    address: ''
+  });
 
   useEffect(() => {
     if (!user || !token) {
@@ -22,6 +30,12 @@ const Account = () => {
       return;
     }
     fetchOrders();
+    // Initialize form with user data
+    setProfileForm({
+      full_name: user.full_name || '',
+      phone: user.phone || '',
+      address: user.address || ''
+    });
   }, [user, token]);
 
   const fetchOrders = async () => {
@@ -38,6 +52,51 @@ const Account = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleProfileChange = (e) => {
+    const { name, value } = e.target;
+    setProfileForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSaveProfile = async () => {
+    setSaving(true);
+    setMessage({ type: '', text: '' });
+
+    try {
+      const res = await fetch(`${API_URL}/api/auth/me`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(profileForm)
+      });
+
+      if (res.ok) {
+        const updatedUser = await res.json();
+        login(updatedUser, token); // Update user in context
+        setMessage({ type: 'success', text: 'Profile updated successfully!' });
+        setIsEditing(false);
+      } else {
+        const err = await res.json();
+        setMessage({ type: 'error', text: err.detail || 'Failed to update profile' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Network error. Please try again.' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const cancelEdit = () => {
+    setProfileForm({
+      full_name: user.full_name || '',
+      phone: user.phone || '',
+      address: user.address || ''
+    });
+    setIsEditing(false);
+    setMessage({ type: '', text: '' });
   };
 
   const handleLogout = () => {
@@ -211,15 +270,51 @@ const Account = () => {
               animate={{ opacity: 1, y: 0 }}
               className="profile-section"
             >
-              <h1>Profile Details</h1>
+              <div className="profile-header-row">
+                <h1>Profile Details</h1>
+                {!isEditing ? (
+                  <button className="edit-btn" onClick={() => setIsEditing(true)}>
+                    <Edit2 size={18} />
+                    Edit Profile
+                  </button>
+                ) : (
+                  <div className="edit-actions">
+                    <button className="cancel-btn" onClick={cancelEdit}>
+                      <X size={18} />
+                      Cancel
+                    </button>
+                    <button className="save-btn" onClick={handleSaveProfile} disabled={saving}>
+                      <Save size={18} />
+                      {saving ? 'Saving...' : 'Save Changes'}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {message.text && (
+                <div className={`profile-message ${message.type}`}>
+                  {message.text}
+                </div>
+              )}
               
               <div className="profile-card">
                 <div className="profile-header">
                   <div className="profile-avatar">
-                    {user.full_name?.charAt(0).toUpperCase() || 'U'}
+                    {(isEditing ? profileForm.full_name : user.full_name)?.charAt(0).toUpperCase() || 'U'}
                   </div>
                   <div className="profile-name">
-                    <h2>{user.full_name || 'User'}</h2>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        name="full_name"
+                        value={profileForm.full_name}
+                        onChange={handleProfileChange}
+                        className="edit-input name-input"
+                        placeholder="Your full name"
+                      />
+                    ) : (
+                      <h2>{user.full_name || 'User'}</h2>
+                    )}
                     <span className="member-since">
                       Member since {new Date(user.created_at || Date.now()).toLocaleDateString()}
                     </span>
@@ -232,6 +327,7 @@ const Account = () => {
                     <div>
                       <label>Email Address</label>
                       <span>{user.email}</span>
+                      <small className="hint">Email cannot be changed</small>
                     </div>
                   </div>
                   
@@ -239,7 +335,18 @@ const Account = () => {
                     <Phone size={20} />
                     <div>
                       <label>Phone Number</label>
-                      <span>{user.phone || 'Not provided'}</span>
+                      {isEditing ? (
+                        <input
+                          type="tel"
+                          name="phone"
+                          value={profileForm.phone}
+                          onChange={handleProfileChange}
+                          className="edit-input"
+                          placeholder="Enter your phone number"
+                        />
+                      ) : (
+                        <span>{user.phone || 'Not provided'}</span>
+                      )}
                     </div>
                   </div>
                   
@@ -247,7 +354,18 @@ const Account = () => {
                     <MapPin size={20} />
                     <div>
                       <label>Address</label>
-                      <span>{user.address || 'Not provided'}</span>
+                      {isEditing ? (
+                        <textarea
+                          name="address"
+                          value={profileForm.address}
+                          onChange={handleProfileChange}
+                          className="edit-input address-input"
+                          placeholder="Enter your address"
+                          rows={3}
+                        />
+                      ) : (
+                        <span>{user.address || 'Not provided'}</span>
+                      )}
                     </div>
                   </div>
                 </div>

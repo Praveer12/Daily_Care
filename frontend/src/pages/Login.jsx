@@ -62,7 +62,7 @@ const Login = () => {
             email: formData.email,
             password: formData.password,
             full_name: formData.name,
-            phone: formData.phone || null
+            phone: formData.phone
           })
         });
 
@@ -177,7 +177,7 @@ const Login = () => {
 
             {!isLogin && (
               <div className="form-group">
-                <label htmlFor="phone">Phone (Optional)</label>
+                <label htmlFor="phone">Phone Number *</label>
                 <div className="input-wrapper">
                   <Phone size={18} />
                   <input
@@ -186,7 +186,8 @@ const Login = () => {
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
-                    placeholder="Enter your phone"
+                    placeholder="Enter your phone number"
+                    required
                   />
                 </div>
               </div>

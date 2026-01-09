@@ -11,6 +11,7 @@ class User(Base):
     hashed_password = Column(String)
     full_name = Column(String)
     phone = Column(String, nullable=True)
+    address = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -106,3 +107,14 @@ class WishlistItem(Base):
     
     user = relationship("User", back_populates="wishlist_items")
     product = relationship("Product")
+
+
+class OTP(Base):
+    __tablename__ = "otps"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    phone = Column(String, index=True)
+    otp_code = Column(String)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    expires_at = Column(DateTime(timezone=True))
+    is_used = Column(Boolean, default=False)
