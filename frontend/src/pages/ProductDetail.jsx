@@ -1,10 +1,10 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, Heart, Minus, Plus, ShoppingBag, Truck, RefreshCw, Shield, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CartContext, WishlistContext } from '../App';
 import ProductCard from '../components/ProductCard';
-import { products } from '../data/products';
+import { API_URL } from '../data/products';
 import './ProductDetail.css';
 
 const ProductDetail = () => {
@@ -14,11 +14,36 @@ const ProductDetail = () => {
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState('description');
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [product, setProduct] = useState(null);
+  const [relatedProducts, setRelatedProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const product = products.find(p => p.id === parseInt(id));
-  const relatedProducts = products
-    .filter(p => p.category === product?.category && p.id !== product?.id)
-    .slice(0, 4);
+  useEffect(() => {
+    const fetchProduct = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`${API_URL}/api/products/${id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setProduct(data);
+          // Fetch related products from same category
+          const relatedRes = await fetch(`${API_URL}/api/products?category=${data.category?.slug || ''}&limit=4`);
+          if (relatedRes.ok) {
+            const relatedData = await relatedRes.json();
+            setRelatedProducts(relatedData.filter(p => p.id !== data.id).slice(0, 4));
+          }
+        } else {
+          setProduct(null);
+        }
+      } catch (err) {
+        console.error('Error fetching product:', err);
+        setProduct(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProduct();
+  }, [id]);
 
   // Check if product is in wishlist
   const isWishlisted = product ? isInWishlist(product.id) : false;
@@ -26,10 +51,21 @@ const ProductDetail = () => {
   // Generate multiple images for gallery (using same image with different angles simulation)
   const productImages = product ? [
     product.image,
-    product.image,
-    product.image,
-    product.image,
-  ] : [];
+    ...(product.images || []),
+  ].filter(Boolean) : [];
+  
+  // Ensure at least one image
+  if (productImages.length === 0 && product) {
+    productImages.push(product.image);
+  }
+
+  if (loading) {
+    return (
+      <div className="product-not-found">
+        <h2>Loading...</h2>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -71,7 +107,7 @@ const ProductDetail = () => {
           <span>/</span>
           <Link to="/products">Products</Link>
           <span>/</span>
-          <Link to={`/products/${product.category}`}>{product.category}</Link>
+          <Link to={`/products?category=${product.category?.slug || ''}`}>{product.category?.name || 'Category'}</Link>
           <span>/</span>
           <span>{product.name}</span>
         </nav>
@@ -126,7 +162,7 @@ const ProductDetail = () => {
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
           >
-            <span className="product-category">{product.category}</span>
+            <span className="product-category">{product.category?.name || 'Category'}</span>
             <h1>{product.name}</h1>
 
             <div className="product-rating">
@@ -135,22 +171,22 @@ const ProductDetail = () => {
                   <Star
                     key={i}
                     size={18}
-                    fill={i < Math.floor(product.rating) ? '#f4c430' : 'none'}
+                    fill={i < Math.floor(product.rating || 0) ? '#f4c430' : 'none'}
                     color="#f4c430"
                   />
                 ))}
               </div>
-              <span>{product.rating}</span>
-              <span className="reviews">({product.reviews} reviews)</span>
+              <span>{product.rating || 0}</span>
+              <span className="reviews">({product.reviews_count || 0} reviews)</span>
             </div>
 
             <div className="product-price">
               <span className="current">₹{product.price}</span>
-              {product.originalPrice && (
+              {product.original_price && (
                 <>
-                  <span className="original">₹{product.originalPrice}</span>
+                  <span className="original">₹{product.original_price}</span>
                   <span className="discount">
-                    Save {Math.round((1 - product.price / product.originalPrice) * 100)}%
+                    Save {Math.round((1 - product.price / product.original_price) * 100)}%
                   </span>
                 </>
               )}
