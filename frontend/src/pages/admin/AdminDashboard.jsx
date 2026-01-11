@@ -47,6 +47,7 @@ const AdminDashboard = ({ onLogout }) => {
     ingredients: '',
     benefits: ''
   });
+  const [uploading, setUploading] = useState(false);
 
   const token = localStorage.getItem('token');
 
@@ -161,6 +162,41 @@ const AdminDashboard = ({ onLogout }) => {
         ...prev,
         images: [...prev.images, url]
       }));
+    }
+  };
+
+  const handleImageUpload = async (e, isMainImage = false) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch(`${API_URL}/api/upload/image`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (isMainImage) {
+          setProductForm(prev => ({ ...prev, image: data.url }));
+        } else {
+          setProductForm(prev => ({ ...prev, images: [...prev.images, data.url] }));
+        }
+      } else {
+        const error = await res.json();
+        alert(error.detail || 'Upload failed');
+      }
+    } catch (error) {
+      alert('Upload failed. Please try again.');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -803,15 +839,32 @@ const AdminDashboard = ({ onLogout }) => {
                 </div>
 
                 <div className="form-group">
-                  <label>Main Image URL *</label>
-                  <input
-                    type="url"
-                    name="image"
-                    value={productForm.image}
-                    onChange={handleProductFormChange}
-                    placeholder="https://example.com/image.jpg"
-                    required
-                  />
+                  <label>Main Image *</label>
+                  <div className="image-input-group">
+                    <input
+                      type="url"
+                      name="image"
+                      value={productForm.image}
+                      onChange={handleProductFormChange}
+                      placeholder="https://example.com/image.jpg or upload"
+                    />
+                    <label className="upload-btn">
+                      <Upload size={18} />
+                      {uploading ? 'Uploading...' : 'Upload'}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleImageUpload(e, true)}
+                        disabled={uploading}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+                  </div>
+                  {productForm.image && (
+                    <div className="image-preview">
+                      <img src={productForm.image} alt="Preview" />
+                    </div>
+                  )}
                 </div>
 
                 <div className="form-group full-width">
@@ -825,9 +878,20 @@ const AdminDashboard = ({ onLogout }) => {
                         </button>
                       </div>
                     ))}
-                    <button type="button" className="add-image-btn" onClick={handleAddImage}>
+                    <label className="add-image-btn">
                       <Upload size={18} />
-                      Add Image
+                      {uploading ? 'Uploading...' : 'Upload Image'}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleImageUpload(e, false)}
+                        disabled={uploading}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+                    <button type="button" className="add-image-btn" onClick={handleAddImage}>
+                      <Plus size={18} />
+                      Add URL
                     </button>
                   </div>
                 </div>
