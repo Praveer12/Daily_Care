@@ -585,23 +585,27 @@ const AdminDashboard = ({ onLogout }) => {
           <div className="analytics-content">
             <div className="analytics-grid">
               <div className="analytics-card">
-                <h3>Sales by Category</h3>
+                <h3>Products by Category</h3>
                 <div className="category-stats">
-                  {['skincare', 'haircare', 'wellness', 'bodycare'].map((cat) => {
-                    const count = products.filter(p => p.category === cat).length;
-                    const percentage = Math.round((count / products.length) * 100);
-                    return (
-                      <div key={cat} className="category-bar">
-                        <div className="bar-label">
-                          <span>{cat}</span>
-                          <span>{percentage}%</span>
+                  {categories.length === 0 ? (
+                    <p style={{color: '#888', textAlign: 'center'}}>No categories yet</p>
+                  ) : (
+                    categories.map((cat) => {
+                      const count = products.filter(p => p.category_id === cat.id || p.category?.id === cat.id).length;
+                      const percentage = products.length > 0 ? Math.round((count / products.length) * 100) : 0;
+                      return (
+                        <div key={cat.id} className="category-bar">
+                          <div className="bar-label">
+                            <span>{cat.name}</span>
+                            <span>{count} ({percentage}%)</span>
+                          </div>
+                          <div className="bar-track">
+                            <div className="bar-fill" style={{ width: `${percentage}%` }}></div>
+                          </div>
                         </div>
-                        <div className="bar-track">
-                          <div className="bar-fill" style={{ width: `${percentage}%` }}></div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
               </div>
 
@@ -609,42 +613,42 @@ const AdminDashboard = ({ onLogout }) => {
                 <h3>Revenue Overview</h3>
                 <div className="revenue-stats">
                   <div className="revenue-item">
-                    <span>Today</span>
-                    <span className="amount">₹12,450</span>
+                    <span>Total Revenue</span>
+                    <span className="amount">₹{stats.total_revenue?.toLocaleString() || 0}</span>
                   </div>
                   <div className="revenue-item">
-                    <span>This Week</span>
-                    <span className="amount">₹89,320</span>
+                    <span>Total Orders</span>
+                    <span className="amount">{stats.total_orders || 0}</span>
                   </div>
                   <div className="revenue-item">
-                    <span>This Month</span>
-                    <span className="amount">₹3,45,670</span>
+                    <span>Pending Orders</span>
+                    <span className="amount">{stats.pending_orders || 0}</span>
                   </div>
                   <div className="revenue-item">
-                    <span>This Year</span>
-                    <span className="amount">₹42,56,890</span>
+                    <span>Avg. Order Value</span>
+                    <span className="amount">₹{stats.total_orders > 0 ? Math.round(stats.total_revenue / stats.total_orders).toLocaleString() : 0}</span>
                   </div>
                 </div>
               </div>
 
               <div className="analytics-card">
-                <h3>Visitor Statistics</h3>
+                <h3>Store Statistics</h3>
                 <div className="visitor-stats">
                   <div className="visitor-item">
-                    <span>Page Views</span>
-                    <span className="count">45,678</span>
+                    <span>Total Users</span>
+                    <span className="count">{stats.total_users || 0}</span>
                   </div>
                   <div className="visitor-item">
-                    <span>Unique Visitors</span>
-                    <span className="count">12,345</span>
+                    <span>Total Products</span>
+                    <span className="count">{products.length}</span>
                   </div>
                   <div className="visitor-item">
-                    <span>Bounce Rate</span>
-                    <span className="count">32%</span>
+                    <span>Categories</span>
+                    <span className="count">{categories.length}</span>
                   </div>
                   <div className="visitor-item">
-                    <span>Avg. Session</span>
-                    <span className="count">4m 32s</span>
+                    <span>Out of Stock</span>
+                    <span className="count">{products.filter(p => p.stock === 0).length}</span>
                   </div>
                 </div>
               </div>

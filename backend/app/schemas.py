@@ -68,14 +68,14 @@ class ProductBase(BaseModel):
     price: float
     original_price: Optional[float] = None
     image: str
-    images: List[str] = []
+    images: Optional[List[str]] = []
     category_id: int
     product_type: str
     stock: int = 0
     is_new: bool = False
     is_bestseller: bool = False
-    ingredients: List[str] = []
-    benefits: List[str] = []
+    ingredients: Optional[List[str]] = []
+    benefits: Optional[List[str]] = []
 
 class ProductCreate(ProductBase):
     pass
@@ -98,9 +98,9 @@ class ProductUpdate(BaseModel):
 
 class Product(ProductBase):
     id: int
-    rating: float
-    reviews_count: int
-    is_active: bool
+    rating: float = 0
+    reviews_count: int = 0
+    is_active: bool = True
     created_at: datetime
     category: Optional[Category] = None
 
@@ -162,7 +162,8 @@ class Order(BaseModel):
     payment_method: str
     payment_status: str
     created_at: datetime
-    items: List[OrderItem]
+    items: List[OrderItem] = []
+    user: Optional[User] = None
 
     class Config:
         from_attributes = True

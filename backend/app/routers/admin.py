@@ -60,7 +60,18 @@ def toggle_user_active(user_id: int, db: Session = Depends(get_db), admin: User 
 # Product Management
 @router.post("/products", response_model=ProductSchema)
 def create_product(product: ProductCreate, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
-    db_product = Product(**product.model_dump())
+    # Check if slug already exists and make it unique
+    base_slug = product.slug
+    slug = base_slug
+    counter = 1
+    while db.query(Product).filter(Product.slug == slug).first():
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+    
+    product_data = product.model_dump()
+    product_data['slug'] = slug
+    
+    db_product = Product(**product_data)
     db.add(db_product)
     db.commit()
     db.refresh(db_product)
