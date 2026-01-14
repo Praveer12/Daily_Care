@@ -131,8 +131,8 @@ const ProductDetail = () => {
                   transition={{ duration: 0.3 }}
                 />
               </AnimatePresence>
-              {product.isNew && <span className="badge badge-new">New</span>}
-              {product.isBestseller && <span className="badge badge-bestseller">Bestseller</span>}
+              {product.is_new && <span className="badge badge-new">New</span>}
+              {product.is_bestseller && <span className="badge badge-bestseller">Bestseller</span>}
               
               {/* Navigation Arrows */}
               <button className="gallery-nav prev" onClick={prevImage}>
@@ -281,12 +281,16 @@ const ProductDetail = () => {
                 className="tab-panel"
               >
                 <ul className="ingredients-list">
-                  {product.ingredients.map((ingredient, index) => (
-                    <li key={index}>
-                      <Check size={16} />
-                      {ingredient}
-                    </li>
-                  ))}
+                  {(product.ingredients || []).length > 0 ? (
+                    (product.ingredients || []).map((ingredient, index) => (
+                      <li key={index}>
+                        <Check size={16} />
+                        {ingredient}
+                      </li>
+                    ))
+                  ) : (
+                    <li>No ingredients listed</li>
+                  )}
                 </ul>
               </motion.div>
             )}
@@ -298,12 +302,16 @@ const ProductDetail = () => {
                 className="tab-panel"
               >
                 <ul className="benefits-list">
-                  {product.benefits.map((benefit, index) => (
-                    <li key={index}>
-                      <Check size={16} />
-                      {benefit}
-                    </li>
-                  ))}
+                  {(product.benefits || []).length > 0 ? (
+                    (product.benefits || []).map((benefit, index) => (
+                      <li key={index}>
+                        <Check size={16} />
+                        {benefit}
+                      </li>
+                    ))
+                  ) : (
+                    <li>No benefits listed</li>
+                  )}
                 </ul>
               </motion.div>
             )}
