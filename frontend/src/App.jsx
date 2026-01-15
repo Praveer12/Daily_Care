@@ -11,6 +11,7 @@ import Contact from './pages/Contact';
 import Login from './pages/Login';
 import Wishlist from './pages/Wishlist';
 import Account from './pages/Account';
+import Checkout from './pages/Checkout';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import { products as initialProducts } from './data/products';
@@ -124,6 +125,10 @@ function App() {
 
   const cartCount = cartItems.reduce((count, item) => count + item.quantity, 0);
 
+  const clearCart = () => {
+    setCartItems([]);
+  };
+
   // Wishlist functions
   const addToWishlist = (product) => {
     setWishlistItems(prev => {
@@ -178,7 +183,7 @@ function App() {
     <AuthContext.Provider value={{ user, token, login, logout }}>
       <CartContext.Provider value={{
         cartItems, addToCart, removeFromCart, updateQuantity,
-        cartTotal, cartCount, isCartOpen, setIsCartOpen
+        cartTotal, cartCount, isCartOpen, setIsCartOpen, clearCart
       }}>
         <WishlistContext.Provider value={{
           wishlistItems, addToWishlist, removeFromWishlist, isInWishlist, wishlistCount
@@ -226,6 +231,7 @@ function App() {
                           <Route path="/login" element={<Login />} />
                           <Route path="/wishlist" element={<Wishlist />} />
                           <Route path="/account" element={<Account />} />
+                          <Route path="/checkout" element={<Checkout />} />
                         </Routes>
                       </main>
                       <Footer />

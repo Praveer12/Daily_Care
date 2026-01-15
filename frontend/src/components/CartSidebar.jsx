@@ -89,9 +89,9 @@ const CartSidebar = ({ isOpen, onClose }) => {
                   <Link to="/cart" className="btn-primary" onClick={onClose}>
                     View Cart
                   </Link>
-                  <button className="btn-checkout">
+                  <Link to="/checkout" className="btn-checkout" onClick={onClose}>
                     Checkout
-                  </button>
+                  </Link>
                 </div>
               </>
             )}
