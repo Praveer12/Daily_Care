@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShoppingBag, Menu, X, Search, Heart, User, ChevronDown, LogOut } from 'lucide-react';
 import { CartContext, WishlistContext, AuthContext } from '../App';
+import { API_URL } from '../data/products';
 import CartSidebar from './CartSidebar';
 import './Navbar.css';
 
@@ -12,6 +13,9 @@ const Navbar = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
   const { cartCount, isCartOpen, setIsCartOpen } = useContext(CartContext);
   const { wishlistCount } = useContext(WishlistContext);
   const { user, logout } = useContext(AuthContext);
@@ -31,7 +35,51 @@ const Navbar = () => {
     setActiveDropdown(null);
     setIsSearchOpen(false);
     setShowUserMenu(false);
+    setSearchQuery('');
+    setSearchResults([]);
   }, [location]);
+
+  // Search products as user types
+  useEffect(() => {
+    const searchProducts = async () => {
+      if (searchQuery.trim().length < 2) {
+        setSearchResults([]);
+        return;
+      }
+      
+      setSearchLoading(true);
+      try {
+        const res = await fetch(`${API_URL}/api/products?search=${encodeURIComponent(searchQuery)}&limit=5`);
+        if (res.ok) {
+          const data = await res.json();
+          setSearchResults(data);
+        }
+      } catch (err) {
+        console.error('Search error:', err);
+      } finally {
+        setSearchLoading(false);
+      }
+    };
+
+    const debounce = setTimeout(searchProducts, 300);
+    return () => clearTimeout(debounce);
+  }, [searchQuery]);
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/products?search=${encodeURIComponent(searchQuery)}`);
+      setIsSearchOpen(false);
+      setSearchQuery('');
+    }
+  };
+
+  const handleProductClick = (productId) => {
+    navigate(`/product/${productId}`);
+    setIsSearchOpen(false);
+    setSearchQuery('');
+    setSearchResults([]);
+  };
 
   const productTypes = [
     { id: 'serum', name: 'Serums', icon: '💧' },
@@ -208,13 +256,59 @@ const Navbar = () => {
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
             >
-              <div className="search-container">
+              <form onSubmit={handleSearchSubmit} className="search-container">
                 <Search size={20} />
-                <input type="text" placeholder="Search products..." autoFocus />
-                <button onClick={() => setIsSearchOpen(false)}>
+                <input 
+                  type="text" 
+                  placeholder="Search products..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  autoFocus 
+                />
+                <button type="button" onClick={() => setIsSearchOpen(false)}>
                   <X size={20} />
                 </button>
-              </div>
+              </form>
+              
+              {/* Search Results Dropdown */}
+              {searchQuery.trim().length >= 2 && (
+                <motion.div
+                  className="search-results"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  {searchLoading ? (
+                    <div className="search-loading">Searching...</div>
+                  ) : searchResults.length > 0 ? (
+                    <>
+                      {searchResults.map((product) => (
+                        <div
+                          key={product.id}
+                          className="search-result-item"
+                          onClick={() => handleProductClick(product.id)}
+                        >
+                          <img src={product.image} alt={product.name} />
+                          <div className="search-result-info">
+                            <h4>{product.name}</h4>
+                            <p className="search-result-category">{product.category}</p>
+                            <p className="search-result-price">${product.price}</p>
+                          </div>
+                        </div>
+                      ))}
+                      <button 
+                        className="search-view-all"
+                        onClick={handleSearchSubmit}
+                      >
+                        View all results for "{searchQuery}" →
+                      </button>
+                    </>
+                  ) : (
+                    <div className="search-no-results">
+                      No products found for "{searchQuery}"
+                    </div>
+                  )}
+                </motion.div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
