@@ -166,7 +166,7 @@
   margin-bottom: 20px;
 }
 
-.cart-footer .btn-primary {
+.cart-footer .btn-view-cart {
   display: block;
   width: 100%;
   padding: 15px;
@@ -176,26 +176,31 @@
   border-radius: 30px;
   font-weight: 600;
   text-align: center;
+  text-decoration: none;
   transition: var(--transition);
   margin-bottom: 10px;
 }
 
-.cart-footer .btn-primary:hover {
+.cart-footer .btn-view-cart:hover {
   background: var(--primary);
   color: white;
 }
 
 .btn-checkout {
+  display: block;
   width: 100%;
   padding: 15px;
-  background: var(--gradient-primary);
+  background: var(--primary);
   color: white;
   border-radius: 30px;
   font-weight: 600;
+  text-align: center;
+  text-decoration: none;
   transition: var(--transition);
 }
 
 .btn-checkout:hover {
+  background: var(--primary-dark);
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }

@@ -86,11 +86,11 @@ const CartSidebar = ({ isOpen, onClose }) => {
                     <span>₹{cartTotal}</span>
                   </div>
                   <p className="cart-note">Shipping calculated at checkout</p>
-                  <Link to="/cart" className="btn-primary" onClick={onClose}>
+                  <Link to="/cart" className="btn-view-cart" onClick={onClose}>
                     View Cart
                   </Link>
                   <Link to="/checkout" className="btn-checkout" onClick={onClose}>
-                    Checkout
+                    Proceed to Checkout
                   </Link>
                 </div>
               </>
