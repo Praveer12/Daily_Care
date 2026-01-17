@@ -33,6 +33,53 @@ def get_all_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
     users = db.query(User).offset(skip).limit(limit).all()
     return users
 
+@router.get("/users/{user_id}")
+def get_user_details(user_id: int, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    """Get detailed user information including shopping history"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Get user's orders
+    orders = db.query(Order).filter(Order.user_id == user_id).order_by(Order.created_at.desc()).all()
+    
+    # Calculate statistics
+    total_orders = len(orders)
+    total_spent = sum(order.total_amount for order in orders if order.payment_status == "completed")
+    pending_orders = len([o for o in orders if o.status == "pending"])
+    completed_orders = len([o for o in orders if o.status == "delivered"])
+    
+    return {
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "full_name": user.full_name,
+            "phone": user.phone,
+            "address": user.address,
+            "is_active": user.is_active,
+            "is_admin": user.is_admin,
+            "created_at": user.created_at
+        },
+        "shopping_stats": {
+            "total_orders": total_orders,
+            "total_spent": total_spent,
+            "pending_orders": pending_orders,
+            "completed_orders": completed_orders,
+            "average_order_value": total_spent / total_orders if total_orders > 0 else 0
+        },
+        "recent_orders": [
+            {
+                "id": order.id,
+                "status": order.status,
+                "total_amount": order.total_amount,
+                "payment_status": order.payment_status,
+                "created_at": order.created_at,
+                "items_count": len(order.items)
+            }
+            for order in orders[:10]  # Last 10 orders
+        ]
+    }
+
 @router.put("/users/{user_id}/toggle-admin")
 def toggle_user_admin(user_id: int, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
     user = db.query(User).filter(User.id == user_id).first()

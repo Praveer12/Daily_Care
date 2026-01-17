@@ -17,6 +17,9 @@ const AdminDashboard = ({ onLogout }) => {
   const [categories, setCategories] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formMessage, setFormMessage] = useState({ type: '', text: '' });
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [userDetails, setUserDetails] = useState(null);
+  const [loadingUserDetails, setLoadingUserDetails] = useState(false);
   
   // Live data states
   const [stats, setStats] = useState({
@@ -132,6 +135,33 @@ const AdminDashboard = ({ onLogout }) => {
     } catch (error) {
       console.error('Failed to fetch users:', error);
     }
+  };
+
+  const fetchUserDetails = async (userId) => {
+    setLoadingUserDetails(true);
+    try {
+      const res = await fetch(`${API_URL}/api/admin/users/${userId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUserDetails(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch user details:', error);
+    } finally {
+      setLoadingUserDetails(false);
+    }
+  };
+
+  const handleUserClick = (user) => {
+    setSelectedUser(user);
+    fetchUserDetails(user.id);
+  };
+
+  const closeUserModal = () => {
+    setSelectedUser(null);
+    setUserDetails(null);
   };
 
   const generateSlug = (name) => {
@@ -307,6 +337,13 @@ const AdminDashboard = ({ onLogout }) => {
           >
             <ShoppingCart size={20} />
             Orders
+          </button>
+          <button
+            className={`nav-item ${activeTab === 'users' ? 'active' : ''}`}
+            onClick={() => setActiveTab('users')}
+          >
+            <Users size={20} />
+            Users
           </button>
           <button
             className={`nav-item ${activeTab === 'analytics' ? 'active' : ''}`}
@@ -671,6 +708,69 @@ const AdminDashboard = ({ onLogout }) => {
           </div>
         )}
 
+        {/* Users Tab */}
+        {activeTab === 'users' && (
+          <div className="users-content">
+            <div className="content-header">
+              <h2>Registered Users ({users.length})</h2>
+            </div>
+            <div className="users-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Orders</th>
+                    <th>Total Spent</th>
+                    <th>Status</th>
+                    <th>Joined</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" style={{textAlign: 'center', padding: '2rem'}}>No users yet</td>
+                    </tr>
+                  ) : (
+                    users.map((user) => {
+                      const userOrders = orders.filter(o => o.user_id === user.id);
+                      const totalSpent = userOrders.reduce((sum, o) => sum + o.total_amount, 0);
+                      return (
+                        <tr 
+                          key={user.id} 
+                          onClick={() => handleUserClick(user)}
+                          style={{ cursor: 'pointer' }}
+                          className="user-row"
+                        >
+                          <td>#{user.id}</td>
+                          <td>
+                            <div className="user-cell">
+                              <span className="user-name">{user.full_name || 'N/A'}</span>
+                              {user.is_admin && <span className="admin-tag">Admin</span>}
+                            </div>
+                          </td>
+                          <td>{user.email}</td>
+                          <td>{user.phone || 'N/A'}</td>
+                          <td>{userOrders.length}</td>
+                          <td>₹{totalSpent.toLocaleString()}</td>
+                          <td>
+                            <span className={`status-badge ${user.is_active ? 'active' : 'inactive'}`}>
+                              {user.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
+                          <td>{new Date(user.created_at).toLocaleDateString()}</td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* Orders Tab */}
         {activeTab === 'orders' && (
           <div className="orders-content">
@@ -959,6 +1059,142 @@ const AdminDashboard = ({ onLogout }) => {
           </div>
         )}
       </main>
+
+      {/* User Details Modal */}
+      {selectedUser && (
+        <div className="modal-overlay" onClick={closeUserModal}>
+          <motion.div 
+            className="user-modal"
+            onClick={(e) => e.stopPropagation()}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <div className="modal-header">
+              <h2>User Details</h2>
+              <button className="close-modal" onClick={closeUserModal}>
+                <X size={24} />
+              </button>
+            </div>
+
+            {loadingUserDetails ? (
+              <div className="modal-loading">Loading...</div>
+            ) : userDetails ? (
+              <div className="modal-content">
+                {/* User Info */}
+                <div className="user-info-section">
+                  <h3>Personal Information</h3>
+                  <div className="info-grid">
+                    <div className="info-item">
+                      <span className="info-label">Name:</span>
+                      <span className="info-value">{userDetails.user.full_name || 'N/A'}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Email:</span>
+                      <span className="info-value">{userDetails.user.email}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Phone:</span>
+                      <span className="info-value">{userDetails.user.phone || 'N/A'}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Status:</span>
+                      <span className={`status-badge ${userDetails.user.is_active ? 'active' : 'inactive'}`}>
+                        {userDetails.user.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Role:</span>
+                      <span className="info-value">
+                        {userDetails.user.is_admin ? 'Admin' : 'Customer'}
+                      </span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Joined:</span>
+                      <span className="info-value">
+                        {new Date(userDetails.user.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                  {userDetails.user.address && (
+                    <div className="info-item full-width">
+                      <span className="info-label">Address:</span>
+                      <span className="info-value">{userDetails.user.address}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Shopping Stats */}
+                <div className="shopping-stats-section">
+                  <h3>Shopping Statistics</h3>
+                  <div className="stats-cards">
+                    <div className="stat-mini-card">
+                      <span className="stat-mini-label">Total Orders</span>
+                      <span className="stat-mini-value">{userDetails.shopping_stats.total_orders}</span>
+                    </div>
+                    <div className="stat-mini-card">
+                      <span className="stat-mini-label">Total Spent</span>
+                      <span className="stat-mini-value">₹{userDetails.shopping_stats.total_spent.toLocaleString()}</span>
+                    </div>
+                    <div className="stat-mini-card">
+                      <span className="stat-mini-label">Pending Orders</span>
+                      <span className="stat-mini-value">{userDetails.shopping_stats.pending_orders}</span>
+                    </div>
+                    <div className="stat-mini-card">
+                      <span className="stat-mini-label">Completed Orders</span>
+                      <span className="stat-mini-value">{userDetails.shopping_stats.completed_orders}</span>
+                    </div>
+                    <div className="stat-mini-card">
+                      <span className="stat-mini-label">Avg Order Value</span>
+                      <span className="stat-mini-value">₹{Math.round(userDetails.shopping_stats.average_order_value).toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Recent Orders */}
+                <div className="recent-orders-section">
+                  <h3>Recent Orders</h3>
+                  {userDetails.recent_orders.length === 0 ? (
+                    <p className="no-orders">No orders yet</p>
+                  ) : (
+                    <div className="orders-list-modal">
+                      {userDetails.recent_orders.map((order) => (
+                        <div key={order.id} className="order-card-modal">
+                          <div className="order-card-header">
+                            <span className="order-id">Order #{order.id}</span>
+                            <span className={`status-badge ${order.status}`}>
+                              {order.status}
+                            </span>
+                          </div>
+                          <div className="order-card-body">
+                            <div className="order-detail">
+                              <span>Amount:</span>
+                              <span className="amount">₹{order.total_amount}</span>
+                            </div>
+                            <div className="order-detail">
+                              <span>Items:</span>
+                              <span>{order.items_count}</span>
+                            </div>
+                            <div className="order-detail">
+                              <span>Date:</span>
+                              <span>{new Date(order.created_at).toLocaleDateString()}</span>
+                            </div>
+                            <div className="order-detail">
+                              <span>Payment:</span>
+                              <span className={`payment-status ${order.payment_status}`}>
+                                {order.payment_status}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };
