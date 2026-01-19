@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
   LayoutDashboard, Package, ShoppingCart, Users, TrendingUp,
   Bell, LogOut, Plus, Eye, Star, IndianRupee, BarChart3,
-  ArrowUpRight, Clock, ArrowLeft, Upload, X
+  ArrowUpRight, Clock, ArrowLeft, Upload, X, Edit2, Trash2
 } from 'lucide-react';
 import { AdminContext } from '../../App';
 import { API_URL } from '../../data/products';
@@ -20,6 +20,8 @@ const AdminDashboard = ({ onLogout }) => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [userDetails, setUserDetails] = useState(null);
   const [loadingUserDetails, setLoadingUserDetails] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [isEditMode, setIsEditMode] = useState(false);
   
   // Live data states
   const [stats, setStats] = useState({
@@ -266,8 +268,14 @@ const AdminDashboard = ({ onLogout }) => {
     };
 
     try {
-      const res = await fetch(`${API_URL}/api/admin/products`, {
-        method: 'POST',
+      const url = isEditMode 
+        ? `${API_URL}/api/admin/products/${editingProduct.id}`
+        : `${API_URL}/api/admin/products`;
+      
+      const method = isEditMode ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -276,24 +284,90 @@ const AdminDashboard = ({ onLogout }) => {
       });
 
       if (res.ok) {
-        setFormMessage({ type: 'success', text: 'Product created successfully!' });
+        setFormMessage({ 
+          type: 'success', 
+          text: isEditMode ? 'Product updated successfully!' : 'Product created successfully!' 
+        });
         setProductForm({
           name: '', slug: '', description: '', price: '', original_price: '',
           image: '', images: [], category_id: '', product_type: '',
           stock: '', is_new: false, is_bestseller: false, ingredients: '', benefits: ''
         });
+        setIsEditMode(false);
+        setEditingProduct(null);
         // Refresh data
         await fetchDashboardData();
         setTimeout(() => setActiveTab('products'), 1500);
       } else {
         const error = await res.json();
-        setFormMessage({ type: 'error', text: error.detail || 'Failed to create product' });
+        setFormMessage({ 
+          type: 'error', 
+          text: error.detail || `Failed to ${isEditMode ? 'update' : 'create'} product` 
+        });
       }
     } catch (error) {
       setFormMessage({ type: 'error', text: 'Network error. Please try again.' });
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleEditProduct = (product) => {
+    setEditingProduct(product);
+    setIsEditMode(true);
+    setProductForm({
+      name: product.name,
+      slug: product.slug,
+      description: product.description,
+      price: product.price.toString(),
+      original_price: product.original_price ? product.original_price.toString() : '',
+      image: product.image,
+      images: product.images || [],
+      category_id: product.category_id.toString(),
+      product_type: product.product_type,
+      stock: product.stock.toString(),
+      is_new: product.is_new,
+      is_bestseller: product.is_bestseller,
+      ingredients: Array.isArray(product.ingredients) ? product.ingredients.join(', ') : '',
+      benefits: Array.isArray(product.benefits) ? product.benefits.join(', ') : ''
+    });
+    setActiveTab('add-product');
+  };
+
+  const handleDeleteProduct = async (productId) => {
+    if (!window.confirm('Are you sure you want to delete this product?')) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/api/admin/products/${productId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (res.ok) {
+        await fetchDashboardData();
+        alert('Product deleted successfully!');
+      } else {
+        const error = await res.json();
+        alert(error.detail || 'Failed to delete product');
+      }
+    } catch (error) {
+      alert('Network error. Please try again.');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditMode(false);
+    setEditingProduct(null);
+    setProductForm({
+      name: '', slug: '', description: '', price: '', original_price: '',
+      image: '', images: [], category_id: '', product_type: '',
+      stock: '', is_new: false, is_bestseller: false, ingredients: '', benefits: ''
+    });
+    setActiveTab('products');
   };
 
   const handleLogout = () => {
@@ -530,7 +604,16 @@ const AdminDashboard = ({ onLogout }) => {
           <div className="products-content">
             <div className="content-header">
               <h2>Manage Products ({products.length})</h2>
-              <button className="add-product-btn" onClick={() => setActiveTab('add-product')}>
+              <button className="add-product-btn" onClick={() => {
+                setIsEditMode(false);
+                setEditingProduct(null);
+                setProductForm({
+                  name: '', slug: '', description: '', price: '', original_price: '',
+                  image: '', images: [], category_id: '', product_type: '',
+                  stock: '', is_new: false, is_bestseller: false, ingredients: '', benefits: ''
+                });
+                setActiveTab('add-product');
+              }}>
                 <Plus size={18} />
                 Add New Product
               </button>
@@ -545,12 +628,13 @@ const AdminDashboard = ({ onLogout }) => {
                     <th>Price</th>
                     <th>Stock</th>
                     <th>Status</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {products.length === 0 ? (
                     <tr>
-                      <td colSpan="6" style={{textAlign: 'center', padding: '2rem'}}>No products yet. Add your first product!</td>
+                      <td colSpan="7" style={{textAlign: 'center', padding: '2rem'}}>No products yet. Add your first product!</td>
                     </tr>
                   ) : (
                     products.map((product) => (
@@ -569,6 +653,24 @@ const AdminDashboard = ({ onLogout }) => {
                           <span className={`status-badge ${product.is_new ? 'new' : 'active'}`}>
                             {product.is_new ? 'New' : 'Active'}
                           </span>
+                        </td>
+                        <td>
+                          <div className="action-buttons">
+                            <button 
+                              className="action-btn edit-btn"
+                              onClick={() => handleEditProduct(product)}
+                              title="Edit product"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            <button 
+                              className="action-btn delete-btn"
+                              onClick={() => handleDeleteProduct(product.id)}
+                              title="Delete product"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -816,11 +918,11 @@ const AdminDashboard = ({ onLogout }) => {
         {activeTab === 'add-product' && (
           <div className="add-product-content">
             <div className="content-header">
-              <button className="back-btn" onClick={() => setActiveTab('products')}>
+              <button className="back-btn" onClick={handleCancelEdit}>
                 <ArrowLeft size={18} />
                 Back to Products
               </button>
-              <h2>Add New Product</h2>
+              <h2>{isEditMode ? 'Edit Product' : 'Add New Product'}</h2>
             </div>
 
             {formMessage.text && (
@@ -1048,11 +1150,14 @@ const AdminDashboard = ({ onLogout }) => {
               </div>
 
               <div className="form-actions">
-                <button type="button" className="cancel-btn" onClick={() => setActiveTab('products')}>
+                <button type="button" className="cancel-btn" onClick={handleCancelEdit}>
                   Cancel
                 </button>
                 <button type="submit" className="submit-btn" disabled={isSubmitting}>
-                  {isSubmitting ? 'Creating...' : 'Create Product'}
+                  {isSubmitting 
+                    ? (isEditMode ? 'Updating...' : 'Creating...') 
+                    : (isEditMode ? 'Update Product' : 'Create Product')
+                  }
                 </button>
               </div>
             </form>
